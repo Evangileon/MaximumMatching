@@ -2,14 +2,25 @@
  * @author Jun Yu
  */
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Queue;
+
+import java.util.*;
 
 
 public class MaximumMatching {
     // 0 is unused
     ArrayList<Vertex> vertices;
+
+    HashMap<Integer, List<Pair<Integer>>> edgesShrunk;
+    HashSet<Integer> nodesHaveConnectionWithCycle;
+
+    public MaximumMatching(ArrayList<Vertex> vertices) {
+        this.vertices = vertices;
+    }
+
+    public void addEdge(int u, int v) {
+        vertices.get(u).addAdj(v);
+        vertices.get(v).addAdj(u);
+    }
 
     /**
      * Find a free node from 1...n
@@ -29,7 +40,7 @@ public class MaximumMatching {
      * @param freeNode start from this node
      * @return number of matched nodes
      */
-    private int findMaximalMatchingFromAFreeNode(int freeNode) {
+    private int findMaximalMatchingFromFreeNode(int freeNode) {
         for (Vertex v : vertices) {
             v.visited = false;
             v.inMatchingSet = false;
@@ -112,6 +123,39 @@ public class MaximumMatching {
     }
 
     /**
+     * Form a cycle with u and v to their LCA, and (u,v)
+     * @param LCA_index lowest common ancestor of u and v
+     * @param u_index u
+     * @param v_index v
+     * @return cycle
+     */
+    private List<Integer> formCycle(int LCA_index, int u_index, int v_index) {
+        List<Integer> cycle = new LinkedList<>();
+
+        Vertex LCA = vertices.get(LCA_index);
+        Vertex u = vertices.get(u_index);
+        Vertex v = vertices.get(v_index);
+
+        Vertex p = u;
+        // u to LCA
+        while (p.index != LCA_index) {
+            cycle.add(p.index);
+            p = vertices.get(p.augmentingParent);
+        }
+
+        // v to LCA
+        p = v;
+        while (p.index != LCA_index) {
+            cycle.add(p.index);
+        }
+
+        // add LCA
+        cycle.add(LCA_index);
+
+        return cycle;
+    }
+
+    /**
      * Find LCA of u and v in the same augmenting tree
      * @param u_index u
      * @param v_index v
@@ -169,5 +213,73 @@ public class MaximumMatching {
         }
 
         return firstFound;
+    }
+
+    class Pair<T> {
+        T from, to;
+
+        public Pair(T from, T to) {
+            this.from = from;
+            this.to = to;
+        }
+    }
+
+    /**
+     * Shrink cycle C into a single node
+     *
+     * @param cycle cycle to be shrunk
+     * @return index of new node
+     */
+    public int shrinkCycle(List<Integer> cycle) {
+        edgesShrunk = new HashMap<>();
+        nodesHaveConnectionWithCycle = new HashSet<>();
+
+        // for each vertex in cycle
+        for (Integer u_index : cycle) {
+            Vertex u = vertices.get(u_index);
+
+            Iterator<Integer> adjItor = u.adj.iterator();
+
+            // for all adjacent edge of u
+            while (adjItor.hasNext()) {
+                int v_index = adjItor.next();
+                Vertex v = vertices.get(v_index);
+
+                // skip vertex that in cycle
+                if (cycle.contains(v_index)) {
+                    continue;
+                }
+
+                // record nodes that have connection to cycle
+                nodesHaveConnectionWithCycle.add(v_index);
+
+                // first record the almost shrunk edge
+                List<Pair<Integer>> edgesShrunkFromU = edgesShrunk.get(u_index);
+                if (edgesShrunkFromU == null) {
+                    edgesShrunkFromU = new ArrayList<>();
+                    edgesShrunk.put(u_index, edgesShrunkFromU);
+                }
+                edgesShrunkFromU.add(new Pair<>(u_index, v_index));
+
+                // remove edge end point at u
+                // TODO record it for later recovery
+                adjItor.remove();
+                // remove edge end point at v
+                v.removeAdj(u_index);
+            }
+        }
+
+        // insert new vertex x
+        Vertex x = new Vertex(vertices.size());
+        int x_index = vertices.size();
+        vertices.add(x);
+
+        for (Integer k_index : nodesHaveConnectionWithCycle) {
+            x.addAdj(k_index);
+        }
+
+        // the direction of path is the reverse of cycle list
+
+        return x_index;
     }
 }
