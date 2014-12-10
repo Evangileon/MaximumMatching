@@ -10,16 +10,29 @@ public class MaximumMatching {
     // 0 is unused
     ArrayList<Vertex> vertices;
 
+    int numVertices;
+
     HashMap<Integer, List<Pair<Integer>>> edgesShrunk;
     HashSet<Integer> nodesHaveConnectionWithCycle;
 
     public MaximumMatching(ArrayList<Vertex> vertices) {
         this.vertices = vertices;
+        numVertices = vertices.size() - 1;
     }
 
     public void addEdge(int u, int v) {
         vertices.get(u).addAdj(v);
         vertices.get(v).addAdj(u);
+    }
+
+    public int procedure() {
+        int free = findFreeNode();
+        int numMatching = findMaximalMatchingFromFreeNode(free);
+        if (numMatching == numVertices) {
+            return numVertices;
+        }
+
+        return 0;
     }
 
     /**
@@ -117,6 +130,12 @@ public class MaximumMatching {
                     Q.add(v.index);
                 } else if (v.isOuter() && v.augmentingRoot == u.augmentingRoot) {
                     // case 4
+                    int LCA_index = lowestCommonAncestor(u.index, v.index);
+                    List<Integer> cycle = formCycle(LCA_index, u.index, v.index);
+                    int x_index = shrinkCycle(cycle);
+                    MaximumMatching subProblem = new MaximumMatching(vertices); // TODO issue about vertices set
+                    subProblem.procedure();
+                    recoverCycle(cycle, x_index);
                 }
             }
         }
@@ -132,7 +151,6 @@ public class MaximumMatching {
     private List<Integer> formCycle(int LCA_index, int u_index, int v_index) {
         List<Integer> cycle = new LinkedList<>();
 
-        Vertex LCA = vertices.get(LCA_index);
         Vertex u = vertices.get(u_index);
         Vertex v = vertices.get(v_index);
 
@@ -276,10 +294,23 @@ public class MaximumMatching {
 
         for (Integer k_index : nodesHaveConnectionWithCycle) {
             x.addAdj(k_index);
+            Vertex k = vertices.get(k_index);
+            k.addAdj(x.index);
         }
 
         // the direction of path is the reverse of cycle list
 
         return x_index;
+    }
+
+    /**
+     * Include the cycle into MST
+     *
+     * @param cycle   the zero cycle
+     * @param x_index to which cycle shrunk
+     */
+    public void recoverCycle(List<Integer> cycle, int x_index) {
+        // include the cycle into graph
+        System.out.println(cycle.size() + " " + x_index);
     }
 }
