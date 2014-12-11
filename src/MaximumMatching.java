@@ -36,6 +36,8 @@ public class MaximumMatching {
             return numVertices;
         }
 
+        buildAlternatingTree();
+
         return 0;
     }
 
@@ -142,7 +144,7 @@ public class MaximumMatching {
                     int LCA_index = lowestCommonAncestor(u.index, v.index);
                     List<Integer> cycle = formCycle(LCA_index, u.index, v.index);
                     int x_index = shrinkCycle(cycle);
-                    MaximumMatching subProblem = new MaximumMatching(vertices); // TODO issue about vertices set
+                    MaximumMatching subProblem = new MaximumMatching(vertices);
                     subProblem.run = this.run + 1;
                     subProblem.procedure();
                     recoverCycle(cycle, x_index);
