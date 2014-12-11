@@ -125,6 +125,23 @@ public class MaximumMatching {
 
                 if (v.seen && v.isOuter() && v.augmentingRoot != u.augmentingRoot) {
                     // case 1
+                    // set root of all nodes in v's tree to root of u
+                    int v_old_root_index = v.augmentingRoot;
+                    Vertex v_old_root = vertices.get(v_old_root_index);
+                    setAugmentingTreeRoot(vertices.get(v.augmentingRoot), u.augmentingRoot);
+
+                    u.augmentingChildren.add(v.index);
+
+                    // TODO reverse path from v to its root in augmenting path
+
+//                    Vertex prev = null;
+//                    Vertex current = v;
+//                    Vertex next;
+//
+//                    while (current != v_old_root) {
+//                        next = current
+//                    }
+
 
                 } else if (v.isInner() && v.seen) {
                     // case 2
@@ -134,10 +151,12 @@ public class MaximumMatching {
                     v.seen = true;
                     v.isOuter = false;
                     v.augmentingParent = u.index;
+                    v.augmentingRoot = u.augmentingRoot;
                     int x_index = v.mate;
                     Vertex x = vertices.get(x_index);
                     x.isOuter = true;
                     x.augmentingParent = v.index;
+                    x.augmentingRoot = v.augmentingRoot;
                     Q.add(v.index);
                 } else if (v.isOuter() && v.augmentingRoot == u.augmentingRoot) {
                     // case 4
@@ -399,6 +418,24 @@ public class MaximumMatching {
             if (matched ==  numMatching) {
                 break;
             }
+        }
+    }
+
+    /**
+     * Set roots of all nodes in tree rooted at T to index root
+     * @param T root of tree
+     * @param root new root index
+     */
+    private void setAugmentingTreeRoot(Vertex T, int root) {
+        T.augmentingRoot = root;
+
+        if (T.augmentingChildren.size() == 0) {
+            return;
+        }
+
+        for (int v_index : T.adj) {
+            Vertex v = vertices.get(v_index);
+            setAugmentingTreeRoot(v, root);
         }
     }
 }
