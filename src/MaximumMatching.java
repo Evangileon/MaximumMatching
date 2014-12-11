@@ -13,7 +13,11 @@ public class MaximumMatching {
     int numVertices;
 
     HashMap<Integer, List<Pair<Integer>>> edgesShrunk;
+    HashMap<Integer, List<Pair<Integer>>> edgesShrunkOutside;
     HashSet<Integer> nodesHaveConnectionWithCycle;
+
+    // flag
+    int run = 0;
 
     public MaximumMatching(ArrayList<Vertex> vertices) {
         this.vertices = vertices;
@@ -37,11 +41,12 @@ public class MaximumMatching {
 
     /**
      * Find a free node from 1...n
+     *
      * @return index of free node
      */
     private int findFreeNode() {
         for (Vertex v : vertices) {
-            if (v.isFreeNode()) {
+            if (v.toBeProcessed && v.isFreeNode()) {
                 return v.index;
             }
         }
@@ -50,6 +55,7 @@ public class MaximumMatching {
 
     /**
      * Find and mark a maximal matching using BFS
+     *
      * @param freeNode start from this node
      * @return number of matched nodes
      */
@@ -93,11 +99,14 @@ public class MaximumMatching {
         return num;
     }
 
-    public void buildAlternatingTree() {
+    /**
+     * Build tree only using vertices whose run flag equals to solution run flag
+     */
+    private void buildAlternatingTree() {
         Queue<Integer> Q = new LinkedList<>();
 
         for (Vertex v : vertices) {
-            if (!v.inMatchingSet) {
+            if (v.toBeProcessed && !v.inMatchingSet) {
                 Q.add(v.index);
             }
         }
@@ -134,6 +143,7 @@ public class MaximumMatching {
                     List<Integer> cycle = formCycle(LCA_index, u.index, v.index);
                     int x_index = shrinkCycle(cycle);
                     MaximumMatching subProblem = new MaximumMatching(vertices); // TODO issue about vertices set
+                    subProblem.run = this.run + 1;
                     subProblem.procedure();
                     recoverCycle(cycle, x_index);
                 }
@@ -143,9 +153,10 @@ public class MaximumMatching {
 
     /**
      * Form a cycle with u and v to their LCA, and (u,v)
+     *
      * @param LCA_index lowest common ancestor of u and v
-     * @param u_index u
-     * @param v_index v
+     * @param u_index   u
+     * @param v_index   v
      * @return cycle
      */
     private List<Integer> formCycle(int LCA_index, int u_index, int v_index) {
@@ -175,6 +186,7 @@ public class MaximumMatching {
 
     /**
      * Find LCA of u and v in the same augmenting tree
+     *
      * @param u_index u
      * @param v_index v
      * @return LCA, 0 if u and v are not in the same augmenting tree
@@ -193,9 +205,10 @@ public class MaximumMatching {
 
     /**
      * Recursively solve the sub-problem, RT = O(n)
+     *
      * @param root of sub-tree
-     * @param u u
-     * @param v v
+     * @param u    u
+     * @param v    v
      * @return the node found in the sub-tree, u, v, LCA or null
      */
     private Vertex lowestCommonAncestor(Vertex root, Vertex u, Vertex v) {
@@ -248,7 +261,7 @@ public class MaximumMatching {
      * @param cycle cycle to be shrunk
      * @return index of new node
      */
-    public int shrinkCycle(List<Integer> cycle) {
+    private int shrinkCycle(List<Integer> cycle) {
         edgesShrunk = new HashMap<>();
         nodesHaveConnectionWithCycle = new HashSet<>();
 
@@ -273,14 +286,20 @@ public class MaximumMatching {
 
                 // first record the almost shrunk edge
                 List<Pair<Integer>> edgesShrunkFromU = edgesShrunk.get(u_index);
+                List<Pair<Integer>> edgesShrunkFromUOutside = edgesShrunk.get(v_index);
                 if (edgesShrunkFromU == null) {
                     edgesShrunkFromU = new ArrayList<>();
                     edgesShrunk.put(u_index, edgesShrunkFromU);
                 }
-                edgesShrunkFromU.add(new Pair<>(u_index, v_index));
+                if (edgesShrunkOutside == null) {
+                    edgesShrunkFromUOutside = new ArrayList<>();
+                    edgesShrunkOutside.put(v_index, edgesShrunkFromUOutside);
+                }
+                Pair<Integer> pair = new Pair<>(u_index, v_index);
+                edgesShrunkFromU.add(pair);
+                edgesShrunkFromUOutside.add(pair);
 
                 // remove edge end point at u
-                // TODO record it for later recovery
                 adjItor.remove();
                 // remove edge end point at v
                 v.removeAdj(u_index);
@@ -300,6 +319,12 @@ public class MaximumMatching {
 
         // the direction of path is the reverse of cycle list
 
+        // prevent node int cycle from be processed in next recursion
+        for (Integer y_index : cycle) {
+            Vertex y = vertices.get(y_index);
+            y.toBeProcessed = false;
+        }
+
         return x_index;
     }
 
@@ -309,8 +334,52 @@ public class MaximumMatching {
      * @param cycle   the zero cycle
      * @param x_index to which cycle shrunk
      */
-    public void recoverCycle(List<Integer> cycle, int x_index) {
+    private void recoverCycle(List<Integer> cycle, int x_index) {
+        if (cycle == null || cycle.size() == 0) {
+            return;
+        }
+
         // include the cycle into graph
         System.out.println(cycle.size() + " " + x_index);
+        for (Integer y_index : cycle) {
+            Vertex y = vertices.get(y_index);
+            y.toBeProcessed = true;
+        }
+
+        List<Integer> nodeInCycleMatchedToNodeOutsideCycle = new ArrayList<>();
+
+        Vertex x = vertices.get(x_index);
+        if (x.isInMatchingSet()) {
+            int x_mate = x.mate;
+            List<Pair<Integer>> edgesShrunkFromUOutside = edgesShrunkOutside.get(x_mate);
+            assert edgesShrunkFromUOutside != null;
+            // for edge connect node matched to x with node in cycle
+            for (Pair<Integer> pair : edgesShrunkFromUOutside) {
+                nodeInCycleMatchedToNodeOutsideCycle.add(pair.from);
+            }
+        }
+
+//        // for each node in cycle
+//        for (int u_index : cycle) {
+//            Vertex u = vertices.get(u_index);
+//            List<Pair<Integer>> association = edgesShrunk.get(u_index);
+//            if (association == null) {
+//                continue;
+//            }
+//
+//            // for each node outside cycle that has edge to cycle
+//            for (Pair<Integer> edge : association) {
+//                int v_index = edge.to;
+//                Vertex v = vertices.get(v_index);
+//                if (v.isInMatchingSet() && v.mate == u.index) {
+//                    // node in cycle matched with node outside the cycle
+//                    nodeInCycleMatchedToNodeOutsideCycle.add(u.index);
+//                    break;
+//                }
+//            }
+//        }
+
+        int numMatching = (cycle.size() - 1) / 2;
+
     }
 }

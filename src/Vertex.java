@@ -25,11 +25,19 @@ public class Vertex {
     boolean inMatchingSet;
     int mate;
 
+    // flag
+
+    // run is an indicator that mark this vertex is in which recursion
+    // If run equals to the flag in MaximumMatching instance, this vertex will be processed
+    int run;
+    boolean toBeProcessed;
+
     public Vertex(int index) {
         this.index = index;
         isOuter = false;
         inMatchingSet = false;
         visited = false;
+        toBeProcessed = true;
     }
 
     public boolean isInMatchingSet() {
