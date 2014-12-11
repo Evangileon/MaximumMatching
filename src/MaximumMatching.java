@@ -157,10 +157,10 @@ public class MaximumMatching {
      * @param LCA_index lowest common ancestor of u and v
      * @param u_index   u
      * @param v_index   v
-     * @return cycle
+     * @return cycle, follow the order u -> LCA -> v -> u
      */
     private List<Integer> formCycle(int LCA_index, int u_index, int v_index) {
-        List<Integer> cycle = new LinkedList<>();
+        List<Integer> cycle = new ArrayList<>();
 
         Vertex u = vertices.get(u_index);
         Vertex v = vertices.get(v_index);
@@ -172,14 +172,19 @@ public class MaximumMatching {
             p = vertices.get(p.augmentingParent);
         }
 
+        // add LCA
+        cycle.add(LCA_index);
+
+        List<Integer> reverse = new LinkedList<>();
         // v to LCA
         p = v;
         while (p.index != LCA_index) {
-            cycle.add(p.index);
+            reverse.add(p.index);
         }
-
-        // add LCA
-        cycle.add(LCA_index);
+        ListIterator<Integer> itor = reverse.listIterator(reverse.size());
+        while (itor.hasPrevious()) {
+            cycle.add(itor.previous());
+        }
 
         return cycle;
     }
@@ -359,27 +364,39 @@ public class MaximumMatching {
             }
         }
 
-//        // for each node in cycle
-//        for (int u_index : cycle) {
-//            Vertex u = vertices.get(u_index);
-//            List<Pair<Integer>> association = edgesShrunk.get(u_index);
-//            if (association == null) {
-//                continue;
-//            }
-//
-//            // for each node outside cycle that has edge to cycle
-//            for (Pair<Integer> edge : association) {
-//                int v_index = edge.to;
-//                Vertex v = vertices.get(v_index);
-//                if (v.isInMatchingSet() && v.mate == u.index) {
-//                    // node in cycle matched with node outside the cycle
-//                    nodeInCycleMatchedToNodeOutsideCycle.add(u.index);
-//                    break;
-//                }
-//            }
-//        }
-
         int numMatching = (cycle.size() - 1) / 2;
 
+        int start_index;
+        if (nodeInCycleMatchedToNodeOutsideCycle.size() > 0) {
+            // find a node in cycle that matched to outside
+            int start_index_cycle = cycle.indexOf(nodeInCycleMatchedToNodeOutsideCycle.get(0));
+            start_index = start_index_cycle + 1;
+        } else {
+            // no node in cycle matched to outside
+            start_index = 0;
+        }
+
+        int matched = 0;
+        for (int i = start_index; i < i + cycle.size(); i += 2) {
+            int j = i % cycle.size();
+
+            int inner_index = cycle.get(j);
+            Vertex inner = vertices.get(inner_index);
+            int outet_index = cycle.get(j + 1);
+            Vertex outer = vertices.get(outet_index);
+
+            inner.isOuter = false;
+            outer.isOuter = true;
+            inner.inMatchingSet = true;
+            outer.inMatchingSet = true;
+            inner.mate = outet_index;
+            outer.mate = inner_index;
+
+            matched++;
+
+            if (matched ==  numMatching) {
+                break;
+            }
+        }
     }
 }
