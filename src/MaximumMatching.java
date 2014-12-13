@@ -499,11 +499,13 @@ public class MaximumMatching {
 
         int matched = 0;
         for (int i = start_index; i < i + cycle.size(); i += 2) {
+            // circular buffer
+
             int j = i % cycle.size();
 
             int inner_index = cycle.get(j);
             Vertex inner = vertices.get(inner_index);
-            int outet_index = cycle.get(j + 1);
+            int outet_index = cycle.get((j + 1) % cycle.size());
             Vertex outer = vertices.get(outet_index);
 
             inner.isOuter = false;
