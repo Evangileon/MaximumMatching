@@ -121,7 +121,7 @@ public class MaximumMatching {
         Queue<Integer> Q = new LinkedList<>();
 
         for (Vertex v : vertices) {
-            if (v.toBeProcessed && !v.inMatchingSet) {
+            if (v.index != 0 && v.toBeProcessed && !v.inMatchingSet) {
                 Q.add(v.index);
                 v.augmentingRoot = v.index; // self root
             }
