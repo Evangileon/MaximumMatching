@@ -175,6 +175,8 @@ public class MaximumMatching {
                     subProblem.run = this.run + 1;
                     subProblem.procedure();
                     recoverCycle(cycle, x_index);
+                    // TODO sub-problem substitute this problem
+                    return;
                 }
             }
         }
