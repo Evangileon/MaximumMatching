@@ -95,16 +95,17 @@ public class MaximumMatching {
 
             for (int v_index : u.adj) {
                 Vertex v = vertices.get(v_index);
+
+                if (!u.inMatchingSet && !v.inMatchingSet) {
+                    u.inMatchingSet = true;
+                    u.mate = v_index;
+                    v.inMatchingSet = true;
+                    v.mate = u_index;
+                    num += 2; // a pair of matching
+                }
+
                 if (!v.visited) {
                     v.visited = true;
-
-                    if (!u.inMatchingSet && !v.inMatchingSet) {
-                        u.inMatchingSet = true;
-                        u.mate = v_index;
-                        v.inMatchingSet = true;
-                        v.mate = u_index;
-                        num += 2; // a pair of matching
-                    }
 
                     queue.add(v_index);
                 }
@@ -124,6 +125,7 @@ public class MaximumMatching {
             if (v.index != 0 && v.toBeProcessed && !v.inMatchingSet) {
                 Q.add(v.index);
                 v.augmentingRoot = v.index; // self root
+                v.seen = true;
             }
         }
 
@@ -133,6 +135,10 @@ public class MaximumMatching {
 
             for (int v_index : u.adj) {
                 Vertex v = vertices.get(v_index);
+                if (u.augmentingParent == v_index) {
+                    continue; // TODO add
+                }
+
                 if (u.mate == v_index) {
                     continue;
                 }
@@ -150,12 +156,16 @@ public class MaximumMatching {
                     v.isOuter = false;
                     v.augmentingParent = u.index;
                     v.augmentingRoot = u.augmentingRoot;
+                    u.augmentingChildren.add(v.index);
                     int x_index = v.mate;
                     Vertex x = vertices.get(x_index);
+                    x.seen = true;
                     x.isOuter = true;
                     x.augmentingParent = v.index;
                     x.augmentingRoot = v.augmentingRoot;
+                    v.augmentingChildren.add(x.index);
                     Q.add(v.index);
+                    Q.add(x.index); // TODO add
                 } else if (v.isOuter() && v.augmentingRoot == u.augmentingRoot) {
                     // case 4
                     int LCA_index = lowestCommonAncestor(u.index, v.index);
@@ -182,8 +192,6 @@ public class MaximumMatching {
         int v_old_root_index = v.augmentingRoot;
         Vertex v_old_root = vertices.get(v_old_root_index);
         setAugmentingTreeRoot(vertices.get(v.augmentingRoot), u.augmentingRoot);
-
-        u.augmentingChildren.add(v.index);
 
         // reverse path from v to its root in augmenting path
 
@@ -246,8 +254,8 @@ public class MaximumMatching {
         }
 
         for (int i = begin; i < path.size() - 1; i += 2) {
-            Vertex u = vertices.get(i);
-            Vertex v = vertices.get(i + 1);
+            Vertex u = vertices.get(path.get(i));
+            Vertex v = vertices.get(path.get(i + 1));
 
             u.inMatchingSet = true;
             u.mate = v.index;
@@ -285,6 +293,7 @@ public class MaximumMatching {
         p = v;
         while (p.index != LCA_index) {
             reverse.add(p.index);
+            p = vertices.get(p.augmentingParent);
         }
         ListIterator<Integer> itor = reverse.listIterator(reverse.size());
         while (itor.hasPrevious()) {
@@ -309,7 +318,7 @@ public class MaximumMatching {
             return 0;
         }
 
-        Vertex root = vertices.get(u_index);
+        Vertex root = vertices.get(u.augmentingRoot);
         return lowestCommonAncestor(root, u, v).index;
     }
 
@@ -373,6 +382,7 @@ public class MaximumMatching {
      */
     private int shrinkCycle(List<Integer> cycle) {
         edgesShrunk = new HashMap<>();
+        edgesShrunkOutside = new HashMap<>();
         nodesHaveConnectionWithCycle = new HashSet<>();
 
         // for each vertex in cycle
@@ -380,10 +390,13 @@ public class MaximumMatching {
             Vertex u = vertices.get(u_index);
 
             Iterator<Integer> adjItor = u.adj.iterator();
+            Iterator<Integer> weightItor = u.weight.iterator();
 
             // for all adjacent edge of u
             while (adjItor.hasNext()) {
                 int v_index = adjItor.next();
+                int weight = weightItor.next();
+
                 Vertex v = vertices.get(v_index);
 
                 // skip vertex that in cycle
@@ -411,6 +424,7 @@ public class MaximumMatching {
 
                 // remove edge end point at u
                 adjItor.remove();
+                weightItor.remove();
                 // remove edge end point at v
                 v.removeAdj(u_index);
             }
@@ -524,7 +538,7 @@ public class MaximumMatching {
             return;
         }
 
-        for (int v_index : T.adj) {
+        for (int v_index : T.augmentingChildren) {
             Vertex v = vertices.get(v_index);
             setAugmentingTreeRoot(v, root);
         }
