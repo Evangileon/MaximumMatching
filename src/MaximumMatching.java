@@ -30,6 +30,18 @@ public class MaximumMatching {
     }
 
     public int procedure() {
+        for (Vertex v : vertices) {
+            v.augmentingRoot = 0;
+            v.augmentingChildren.clear();
+            v.augmentingParent = 0;
+            v.mate = 0;
+            v.isOuter = true;
+            v.inMatchingSet = false;
+            v.seen = false;
+            v.visited = false;
+        }
+
+
         int free = findFreeNode();
         int numMatching = findMaximalMatchingFromFreeNode(free);
         if (numMatching == numVertices) {
@@ -110,6 +122,7 @@ public class MaximumMatching {
         for (Vertex v : vertices) {
             if (v.toBeProcessed && !v.inMatchingSet) {
                 Q.add(v.index);
+                v.augmentingRoot = v.index; // self root
             }
         }
 
@@ -124,24 +137,8 @@ public class MaximumMatching {
                 }
 
                 if (v.seen && v.isOuter() && v.augmentingRoot != u.augmentingRoot) {
-                    // case 1
-                    // set root of all nodes in v's tree to root of u
-                    int v_old_root_index = v.augmentingRoot;
-                    Vertex v_old_root = vertices.get(v_old_root_index);
-                    setAugmentingTreeRoot(vertices.get(v.augmentingRoot), u.augmentingRoot);
 
-                    u.augmentingChildren.add(v.index);
-
-                    // TODO reverse path from v to its root in augmenting path
-
-//                    Vertex prev = null;
-//                    Vertex current = v;
-//                    Vertex next;
-//
-//                    while (current != v_old_root) {
-//                        next = current
-//                    }
-
+                    case1FoundAnAugmentingPath(u, v);
 
                 } else if (v.isInner() && v.seen) {
                     // case 2
@@ -170,6 +167,44 @@ public class MaximumMatching {
                 }
             }
         }
+    }
+
+    /**
+     * Find an augmenting path from u to its root and v to its root
+     * @param u in one augmenting tree
+     * @param v int another augmenting tree
+     * @return the number of extra matching
+     */
+    private int case1FoundAnAugmentingPath(Vertex u, Vertex v) {
+        // case 1
+        // set root of all nodes in v's tree to root of u
+        int v_old_root_index = v.augmentingRoot;
+        Vertex v_old_root = vertices.get(v_old_root_index);
+        setAugmentingTreeRoot(vertices.get(v.augmentingRoot), u.augmentingRoot);
+
+        u.augmentingChildren.add(v.index);
+
+        // reverse path from v to its root in augmenting path
+
+        Vertex prev = u;
+        Vertex current = v;
+        //Vertex next;
+        Vertex oldParent;
+
+        while (current != v_old_root) {
+            prev.augmentingChildren.add(current.index);
+            current.augmentingChildren.remove(Integer.valueOf(prev.index));
+            oldParent = vertices.get(current.augmentingParent);
+            current.augmentingParent = prev.index;
+            prev = current;
+            current = oldParent;
+        }
+
+        prev.augmentingChildren.add(current.index);
+        current.augmentingChildren.remove(Integer.valueOf(prev.index));
+        current.augmentingParent = prev.index;
+
+        return 0;
     }
 
     /**
@@ -317,7 +352,7 @@ public class MaximumMatching {
                     edgesShrunkFromU = new ArrayList<>();
                     edgesShrunk.put(u_index, edgesShrunkFromU);
                 }
-                if (edgesShrunkOutside == null) {
+                if (edgesShrunkFromUOutside == null) {
                     edgesShrunkFromUOutside = new ArrayList<>();
                     edgesShrunkOutside.put(v_index, edgesShrunkFromUOutside);
                 }
@@ -336,6 +371,7 @@ public class MaximumMatching {
         Vertex x = new Vertex(vertices.size());
         int x_index = vertices.size();
         vertices.add(x);
+        x.toBeProcessed = true;
 
         for (Integer k_index : nodesHaveConnectionWithCycle) {
             x.addAdj(k_index);
@@ -359,10 +395,11 @@ public class MaximumMatching {
      *
      * @param cycle   the zero cycle
      * @param x_index to which cycle shrunk
+     * @return number of matching in this cycle
      */
-    private void recoverCycle(List<Integer> cycle, int x_index) {
+    private int recoverCycle(List<Integer> cycle, int x_index) {
         if (cycle == null || cycle.size() == 0) {
-            return;
+            return 0;
         }
 
         // include the cycle into graph
@@ -415,15 +452,20 @@ public class MaximumMatching {
 
             matched++;
 
-            if (matched ==  numMatching) {
+            if (matched == numMatching) {
                 break;
             }
         }
+
+        x.toBeProcessed = false;
+
+        return numMatching;
     }
 
     /**
      * Set roots of all nodes in tree rooted at T to index root
-     * @param T root of tree
+     *
+     * @param T    root of tree
      * @param root new root index
      */
     private void setAugmentingTreeRoot(Vertex T, int root) {
