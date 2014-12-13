@@ -177,6 +177,8 @@ public class MaximumMatching {
                     recoverCycle(cycle, x_index);
                     // TODO sub-problem substitute this problem
                     return;
+                } else {
+                    System.out.println("Logical incomplete");
                 }
             }
         }
@@ -242,7 +244,9 @@ public class MaximumMatching {
         assert path.size() >= 2;
 
         int begin;
+        int end;
 
+        // Because two end of the path may be matched to other nodes, so skip these ends
         Vertex first = vertices.get(path.get(0));
         if (first.isInMatchingSet() && first.mate == path.get(1)) {
             // matched in path
@@ -255,7 +259,17 @@ public class MaximumMatching {
             begin = 1;
         }
 
-        for (int i = begin; i < path.size() - 1; i += 2) {
+        // end is inclusive
+        Vertex last = vertices.get(path.get(path.size() - 1));
+        if (last.isInMatchingSet() && last.mate == path.get(path.size() - 2)) {
+            end = path.size() - 1;
+        } else if (!last.isInMatchingSet()){
+            end = path.size() - 1;
+        } else {
+            end = path.size() - 2;
+        }
+
+        for (int i = begin; i < end; i += 2) {
             Vertex u = vertices.get(path.get(i));
             Vertex v = vertices.get(path.get(i + 1));
 
@@ -468,7 +482,7 @@ public class MaximumMatching {
         }
 
         // include the cycle into graph
-        System.out.println(cycle.size() + " " + x_index);
+        //System.out.println(cycle.size() + " " + x_index);
         for (Integer y_index : cycle) {
             Vertex y = vertices.get(y_index);
             y.toBeProcessed = true;
@@ -478,13 +492,20 @@ public class MaximumMatching {
 
         Vertex x = vertices.get(x_index);
         if (x.isInMatchingSet()) {
-            int x_mate = x.mate;
-            List<Pair<Integer>> edgesShrunkFromUOutside = edgesShrunkOutside.get(x_mate);
+            int x_mate_index = x.mate;
+            List<Pair<Integer>> edgesShrunkFromUOutside = edgesShrunkOutside.get(x_mate_index);
             assert edgesShrunkFromUOutside != null;
             // for edge connect node matched to x with node in cycle
             for (Pair<Integer> pair : edgesShrunkFromUOutside) {
                 nodeInCycleMatchedToNodeOutsideCycle.add(pair.from);
             }
+            int temp = nodeInCycleMatchedToNodeOutsideCycle.get(0);
+            Vertex x_mate = vertices.get(x_mate_index);
+            Vertex nodeInCycle = vertices.get(temp);
+            x_mate.inMatchingSet = true;
+            nodeInCycle.inMatchingSet = true;
+            x_mate.mate = nodeInCycle.index;
+            nodeInCycle.mate = x_mate.index;
         }
 
         int numMatching = (cycle.size() - 1) / 2;
@@ -572,8 +593,6 @@ public class MaximumMatching {
             reader = new BufferedReader(new InputStreamReader(System.in));
         }
 
-        assert reader != null;
-
         try {
             String metaLine = reader.readLine();
             String[] metas = metaLine.split("[\\s\\t]+");
@@ -600,6 +619,7 @@ public class MaximumMatching {
 
             solution.procedure();
             solution.printMatching();
+            System.out.println(solution.vertices.size());
 
 
         } catch (IOException e) {
