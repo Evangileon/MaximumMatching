@@ -61,7 +61,7 @@ public class MaximumMatching {
      */
     private int findFreeNode() {
         for (Vertex v : vertices) {
-            if (v.toBeProcessed && v.isFreeNode()) {
+            if (v.index != 0 && v.toBeProcessed && v.isFreeNode()) {
                 return v.index;
             }
         }
@@ -205,7 +205,55 @@ public class MaximumMatching {
         current.augmentingChildren.remove(Integer.valueOf(prev.index));
         current.augmentingParent = prev.index;
 
+        // form a path from u's root to v's previous root, using backtrace
+        ArrayList<Integer> path = new ArrayList<>();
+        int u_root_index = u.augmentingRoot;
+        Vertex u_root = vertices.get(u_root_index);
+        current = v_old_root;
+
+        while (current != u_root) {
+            path.add(current.index);
+            current = vertices.get(current.augmentingParent);
+        }
+        path.add(u_root_index);
+
+        Collections.reverse(path);
+
+        augmentPath(path);
+
         return 0;
+    }
+
+    /**
+     *
+     * @param path must be in subsequent order
+     */
+    private void augmentPath(List<Integer> path) {
+        assert path.size() >= 2;
+
+        int begin;
+
+        Vertex first = vertices.get(path.get(0));
+        if (first.isInMatchingSet() && first.mate == path.get(1)) {
+            // matched in path
+            begin = 0;
+        } else if (!first.isInMatchingSet()) {
+            // free node
+            begin = 0;
+        } else {
+            // matched to node outside the path
+            begin = 1;
+        }
+
+        for (int i = begin; i < path.size() - 1; i += 2) {
+            Vertex u = vertices.get(i);
+            Vertex v = vertices.get(i + 1);
+
+            u.inMatchingSet = true;
+            u.mate = v.index;
+            v.inMatchingSet = true;
+            v.mate = u.index;
+        }
     }
 
     /**
@@ -488,6 +536,8 @@ public class MaximumMatching {
 
             if (v.inMatchingSet) {
                 System.out.println(v.index + " " + v.mate);
+            } else {
+                System.out.println(v.index + " -");
             }
         }
     }
