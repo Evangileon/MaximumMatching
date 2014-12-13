@@ -3,6 +3,7 @@
  */
 
 
+import java.io.*;
 import java.util.*;
 
 
@@ -24,9 +25,9 @@ public class MaximumMatching {
         numVertices = vertices.size() - 1;
     }
 
-    public void addEdge(int u, int v) {
-        vertices.get(u).addAdj(v);
-        vertices.get(v).addAdj(u);
+    public void addEdge(int u, int v, int weight) {
+        vertices.get(u).addAdj(v, weight);
+        vertices.get(v).addAdj(u, weight);
     }
 
     public int procedure() {
@@ -374,9 +375,9 @@ public class MaximumMatching {
         x.toBeProcessed = true;
 
         for (Integer k_index : nodesHaveConnectionWithCycle) {
-            x.addAdj(k_index);
+            x.addAdj(k_index, 0);
             Vertex k = vertices.get(k_index);
-            k.addAdj(x.index);
+            k.addAdj(x.index, 0);
         }
 
         // the direction of path is the reverse of cycle list
@@ -479,5 +480,63 @@ public class MaximumMatching {
             Vertex v = vertices.get(v_index);
             setAugmentingTreeRoot(v, root);
         }
+    }
+
+    public void printMatching() {
+        for (int i = 1; i <= numVertices; i++) {
+            Vertex v = vertices.get(i);
+
+            if (v.inMatchingSet) {
+                System.out.println(v.index + " " + v.mate);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        BufferedReader reader = null;
+        if (args.length > 0) {
+            try {
+                reader = new BufferedReader(new FileReader(args[0]));
+            } catch (FileNotFoundException e) {
+                System.exit(-1);
+            }
+        } else {
+            reader = new BufferedReader(new InputStreamReader(System.in));
+        }
+
+        assert reader != null;
+
+        try {
+            String metaLine = reader.readLine();
+            String[] metas = metaLine.split("[\\s\\t]+");
+            int numNodes = Integer.parseInt(metas[0]);
+            int numEdges = Integer.parseInt(metas[1]);
+
+            ArrayList<Vertex> nodeSet = new ArrayList<>(numNodes + 1);
+            nodeSet.add(new Vertex(0)); // 0 unused
+            for (int i = 1; i <= numNodes; i++) {
+                nodeSet.add(new Vertex(i));
+            }
+
+            MaximumMatching solution = new MaximumMatching(nodeSet);
+
+            String line;
+            while ((line = reader.readLine()) != null && !line.equals("")) {
+                String[] params = line.split("[\\s\\t]+");
+                int u_index = Integer.parseInt(params[0]);
+                int v_index = Integer.parseInt(params[1]);
+                int u_v_weight = Integer.parseInt(params[2]);
+
+                solution.addEdge(u_index, v_index, u_v_weight);
+            }
+
+            solution.procedure();
+            solution.printMatching();
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }

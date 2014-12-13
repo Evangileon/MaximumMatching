@@ -15,7 +15,8 @@ public class Vertex {
     boolean seen;
 
 
-    LinkedList<Integer> adj = new LinkedList<Integer>();
+    LinkedList<Integer> adj = new LinkedList<>();
+    LinkedList<Integer> weight = new LinkedList<>();
     // otherwise inner
     boolean isOuter;
 
@@ -48,15 +49,18 @@ public class Vertex {
         return !isInMatchingSet();
     }
 
-    public void addAdj(int v) {
+    public void addAdj(int v, int weight) {
         this.adj.add(v);
+        this.weight.add(weight);
     }
 
     public void removeAdj(int adjIndex) {
         Iterator<Integer> adjItor = this.adj.iterator();
+        Iterator<Integer> weightItor = this.weight.iterator();
 
         while (adjItor.hasNext()) {
             int index = adjItor.next();
+            int weight = weightItor.next();
 
             if (index == adjIndex) {
                 adjItor.remove();
