@@ -44,7 +44,7 @@ public class MaximumMatching {
 
 
         int free = findFreeNode();
-        int numMatching = findMaximalMatchingFromFreeNode(free);
+        int numMatching = findMaximalMatchingFromFreeNodeDFS(free);
         if (numMatching == numVertices) {
             return numVertices;
         }
@@ -106,9 +106,43 @@ public class MaximumMatching {
 
                 if (!v.visited) {
                     v.visited = true;
-
                     queue.add(v_index);
                 }
+            }
+        }
+
+        return num;
+    }
+
+    private int findMaximalMatchingFromFreeNodeDFS(int freeNode) {
+        for (Vertex v : vertices) {
+            v.visited = false;
+            v.inMatchingSet = false;
+        }
+
+        Vertex u = vertices.get(freeNode);
+        return findMaximalMatchingFromFreeNodeDFS(u);
+    }
+
+    private int findMaximalMatchingFromFreeNodeDFS(Vertex u) {
+        int num = 0;
+
+        u.visited = true;
+
+        for (int v_index : u.adj) {
+            Vertex v = vertices.get(v_index);
+
+            if (!u.inMatchingSet && !v.inMatchingSet) {
+                u.inMatchingSet = true;
+                u.mate = v.index;
+                v.inMatchingSet = true;
+                v.mate = u.index;
+                num += 2; // a pair of matching
+            }
+
+            if (!v.visited) {
+                v.visited = true;
+                findMaximalMatchingFromFreeNodeDFS(v);
             }
         }
 
@@ -135,25 +169,47 @@ public class MaximumMatching {
 
             for (int v_index : u.adj) {
                 Vertex v = vertices.get(v_index);
-                if (u.augmentingParent == v_index) {
-                    continue; // TODO add
-                }
+//                if (u.augmentingParent == v_index) {
+//                    continue; // TODO add
+//                }
 
                 if (u.mate == v_index) {
+                    //Q.add(v_index);
                     continue;
                 }
 
-                if (v.seen && v.isOuter() && v.augmentingRoot != u.augmentingRoot) {
+                if (!v.isInMatchingSet()) {
+                    v.seen = true;
+                    v.augmentingRoot = u.augmentingRoot;
+                    v.augmentingParent = u.index;
+                    u.augmentingChildren.add(v.index);
+                    int u_root_index = u.augmentingRoot;
+                    List<Integer> path = new ArrayList<>();
+                    Vertex u_root = vertices.get(u_root_index);
+                    Vertex current = v;
+                    while (current != u_root) {
+                        path.add(current.index);
+                        current = vertices.get(current.augmentingParent);
+                    }
+                    path.add(u_root_index);
 
+                    Collections.reverse(path);
+                    // TODO matching from leaf?
+                    augmentPath(path);
+                    //Q.add(v.index);
+
+                } else if (v.seen && v.isOuter() && v.augmentingRoot != u.augmentingRoot) {
+                    // merge u's tree to u
                     case1FoundAnAugmentingPath(u, v);
 
                 } else if (v.isInner() && v.seen) {
                     // case 2
                     continue;
-                } else if (!v.seen) {
+                } else if (v.isInMatchingSet() && !v.seen) {
                     // case 3
                     v.seen = true;
                     v.isOuter = false;
+                    v.inMatchingSet = true;
                     v.augmentingParent = u.index;
                     v.augmentingRoot = u.augmentingRoot;
                     u.augmentingChildren.add(v.index);
@@ -161,10 +217,11 @@ public class MaximumMatching {
                     Vertex x = vertices.get(x_index);
                     x.seen = true;
                     x.isOuter = true;
+                    x.inMatchingSet = true;
                     x.augmentingParent = v.index;
                     x.augmentingRoot = v.augmentingRoot;
                     v.augmentingChildren.add(x.index);
-                    Q.add(v.index);
+                    //Q.add(v.index);
                     Q.add(x.index); // TODO add
                 } else if (v.isOuter() && v.augmentingRoot == u.augmentingRoot) {
                     // case 4
@@ -186,6 +243,7 @@ public class MaximumMatching {
 
     /**
      * Find an augmenting path from u to its root and v to its root
+     *
      * @param u in one augmenting tree
      * @param v int another augmenting tree
      * @return the number of extra matching
@@ -237,11 +295,10 @@ public class MaximumMatching {
     }
 
     /**
-     *
      * @param path must be in subsequent order
      */
     private void augmentPath(List<Integer> path) {
-        assert path.size() >= 2;
+        assert path.size() >= 2 : "Augmenting path has at least 2 nodes";
 
         int begin;
         int end;
@@ -263,7 +320,7 @@ public class MaximumMatching {
         Vertex last = vertices.get(path.get(path.size() - 1));
         if (last.isInMatchingSet() && last.mate == path.get(path.size() - 2)) {
             end = path.size() - 1;
-        } else if (!last.isInMatchingSet()){
+        } else if (!last.isInMatchingSet()) {
             end = path.size() - 1;
         } else {
             end = path.size() - 2;
@@ -274,8 +331,10 @@ public class MaximumMatching {
             Vertex v = vertices.get(path.get(i + 1));
 
             u.inMatchingSet = true;
+            u.isOuter = false;
             u.mate = v.index;
             v.inMatchingSet = true;
+            v.isOuter = true;
             v.mate = u.index;
         }
     }
@@ -315,6 +374,9 @@ public class MaximumMatching {
         while (itor.hasPrevious()) {
             cycle.add(itor.previous());
         }
+
+        assert cycle.size() >= 3 : "Cycle must larger than 3";
+        assert (cycle.size() & 1) != 0 : "Cycle must be odd"; // odd cycle
 
         return cycle;
     }
@@ -494,7 +556,7 @@ public class MaximumMatching {
         if (x.isInMatchingSet()) {
             int x_mate_index = x.mate;
             List<Pair<Integer>> edgesShrunkFromUOutside = edgesShrunkOutside.get(x_mate_index);
-            assert edgesShrunkFromUOutside != null;
+            assert edgesShrunkFromUOutside != null : "Logical error: no records";
             // for edge connect node matched to x with node in cycle
             for (Pair<Integer> pair : edgesShrunkFromUOutside) {
                 nodeInCycleMatchedToNodeOutsideCycle.add(pair.from);
@@ -520,28 +582,41 @@ public class MaximumMatching {
             start_index = 0;
         }
 
-        int matched = 0;
-        for (int i = start_index; i < i + cycle.size(); i += 2) {
-            // circular buffer
+        if (numMatching > 0) {
+            int matched = 0;
+            for (int i = start_index; i < i + cycle.size(); i += 2) {
+                // circular buffer
 
-            int j = i % cycle.size();
+                int j = i % cycle.size();
 
-            int inner_index = cycle.get(j);
-            Vertex inner = vertices.get(inner_index);
-            int outet_index = cycle.get((j + 1) % cycle.size());
-            Vertex outer = vertices.get(outet_index);
+                int inner_index = cycle.get(j);
+                Vertex inner = vertices.get(inner_index);
+                int outet_index = cycle.get((j + 1) % cycle.size());
+                Vertex outer = vertices.get(outet_index);
 
-            inner.isOuter = false;
-            outer.isOuter = true;
-            inner.inMatchingSet = true;
-            outer.inMatchingSet = true;
-            inner.mate = outet_index;
-            outer.mate = inner_index;
+                inner.isOuter = false;
+                outer.isOuter = true;
+                inner.inMatchingSet = true;
+                outer.inMatchingSet = true;
+                inner.mate = outet_index;
+                outer.mate = inner_index;
 
-            matched++;
+                matched++;
 
-            if (matched == numMatching) {
-                break;
+                if (matched == numMatching) {
+                    break;
+                }
+            }
+        }
+
+        // recover removed adjacent nodes
+        for (Map.Entry<Integer, List<Pair<Integer>>> pair : edgesShrunk.entrySet()) {
+            int node_in_cycle_index = pair.getKey();
+            List<Pair<Integer>> edges = pair.getValue();
+
+            for (Pair<Integer> edge : edges) {
+                int to_index = edge.to;
+                addEdge(node_in_cycle_index, to_index, 1);
             }
         }
 
